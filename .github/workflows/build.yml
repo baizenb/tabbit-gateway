@@ -60,6 +60,17 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Upload build log on failure
+        if: failure()
+        run: |
+          TOKEN="${GITHUB_TOKEN}"
+          RID=$(curl -s -H "Authorization: token $TOKEN" https://api.github.com/repos/baizenb/tabbit-gateway/releases/tags/v1.0.0 | python3 -c "import json,sys; print(json.load(sys.stdin).get('id',''))")
+          if [ -n "$RID" ]; then
+            AID=$(curl -s -H "Authorization: token $TOKEN" https://api.github.com/repos/baizenb/tabbit-gateway/releases/$RID/assets | python3 -c "import json,sys; print(next((a['id'] for a in json.load(sys.stdin) if a['name']=='build-log.txt'),''))")
+            [ -n "$AID" ] && curl -s -o /dev/null -X DELETE -H "Authorization: token $TOKEN" https://api.github.com/repos/baizenb/tabbit-gateway/releases/assets/$AID
+            curl -s -o /dev/null -w "log upload:%{http_code}\n" -X POST -H "Authorization: token $TOKEN" -H "Content-Type: text/plain" --data-binary @/tmp/build.log "https://uploads.github.com/repos/baizenb/tabbit-gateway/releases/$RID/assets?name=build-log.txt"
+          fi
+
       - uses: actions/upload-artifact@v4
         with:
           name: tabbit-gateway-apk
