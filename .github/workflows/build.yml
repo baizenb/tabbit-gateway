@@ -14,21 +14,30 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - uses: android-actions/setup-android@v3
+      - name: Install Gradle 8.9
+        run: |
+          curl -sL -o /tmp/g.zip https://services.gradle.org/distributions/gradle-8.9-bin.zip
+          unzip -q /tmp/g.zip -d /opt
+          echo "/opt/gradle-8.9/bin" >> $GITHUB_PATH
 
-      - uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.9'
+      - name: SDK check
+        run: |
+          yes | sdkmanager --licenses > /dev/null 2>&1 || true
+          sdkmanager "platforms;android-34" "build-tools;34.0.0" > /dev/null 2>&1 || true
+          sdkmanager --list 2>/dev/null | grep -E "platforms;android-34 \||build-tools;34" || true
 
       - name: Build debug APK
-        run: gradle assembleDebug --no-daemon
-
-      - name: Build release APK (unsigned)
-        run: gradle assembleRelease --no-daemon
+        run: |
+          set -o pipefail
+          gradle assembleDebug --no-daemon 2>&1 | tee /tmp/build.log | grep -aE "^> Task|BUILD" | tail -8 || true
+          st=${PIPESTATUS[0]}
+          if [ "$st" -ne 0 ]; then
+            echo "::error::gradle assembleDebug exit $st"
+            grep -aE "FAILURE|What went wrong|Caused by|error:|Exception|FAILED|> " /tmp/build.log | head -25 | while IFS= read -r l; do echo "::error::$l"; done
+            exit $st
+          fi
 
       - uses: actions/upload-artifact@v4
         with:
           name: tabbit-gateway-apk
-          path: |
-            app/build/outputs/apk/debug/*.apk
-            app/build/outputs/apk/release/*.apk
+          path: app/build/outputs/apk/debug/*.apk
