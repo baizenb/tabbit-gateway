@@ -30,14 +30,15 @@ jobs:
 
       - name: Build debug APK
         run: |
-          set -o pipefail
-          gradle assembleDebug --no-daemon 2>&1 | tee /tmp/build.log | grep -aE "^> Task|BUILD" | tail -8 || true
-          st=${PIPESTATUS[0]}
+          /opt/gradle-8.9/bin/gradle assembleDebug --no-daemon > /tmp/build.log 2>&1
+          st=$?
           if [ "$st" -ne 0 ]; then
-            echo "::error::gradle assembleDebug exit $st"
-            grep -aE "FAILURE|What went wrong|Caused by|error:|Exception|FAILED|> " /tmp/build.log | head -25 | while IFS= read -r l; do echo "::error::$l"; done
+            echo "::error::gradle exit $st"
+            grep -aE "FAILURE|What went wrong|Caused by|error:|Exception|FAILED" /tmp/build.log | head -20 | while IFS= read -r l; do echo "::error::$l"; done
             exit $st
           fi
+          grep -aE "^> Task|BUILD" /tmp/build.log | tail -6
+          ls -la app/build/outputs/apk/debug/
 
 
       - name: Release APK
