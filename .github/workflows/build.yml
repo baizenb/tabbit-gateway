@@ -35,8 +35,12 @@ jobs:
           /opt/gradle-8.9/bin/gradle assembleDebug --no-daemon > /tmp/build.log 2>&1
           st=$?
           if [ "$st" -ne 0 ]; then
-            echo "::error::gradle exit $st"
-            echo "::error::$(tail -35 /tmp/build.log | sed ':a;N;$!ba;s/\n/%0A/g' | head -c 3500)"
+            {
+              echo "### gradle exit $st"
+              echo '<pre>'
+              tail -80 /tmp/build.log
+              echo '</pre>'
+            } >> "$GITHUB_STEP_SUMMARY"
             exit $st
           fi
           grep -aE "^> Task|BUILD" /tmp/build.log | tail -6
