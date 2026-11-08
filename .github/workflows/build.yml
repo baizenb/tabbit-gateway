@@ -63,11 +63,11 @@ jobs:
       - name: Commit build log on failure
         if: failure()
         run: |
-          TOKEN="${GITHUB_TOKEN}"
-          b64=$(base64 -w0 /tmp/build.log)
-          SHA=$(curl -s -H "Authorization: token $TOKEN" "https://api.github.com/repos/baizenb/tabbit-gateway/contents/build-log.txt" | python3 -c "import json,sys; print(json.load(sys.stdin).get('sha',''))")
-          echo "{\"message\":\"build log\",\"content\":\"$b64\",\"sha\":\"$SHA\"}" > /tmp/put.json
-          curl -s -o /dev/null -w "log put:%{http_code}\n" -X PUT -H "Authorization: token $TOKEN" https://api.github.com/repos/baizenb/tabbit-gateway/contents/build-log.txt -d @/tmp/put.json
+          cd "$GITHUB_WORKSPACE"
+          cp /tmp/build.log ./build-log.txt
+          git add build-log.txt
+          git -c user.email=act@local -c user.name=act commit -m "build log"
+          git push "https://x-access-token:${GITHUB_TOKEN}@github.com/baizenb/tabbit-gateway.git" HEAD:main || echo "::error::push failed rc=$?"
 
       - uses: actions/upload-artifact@v4
         with:
