@@ -114,7 +114,7 @@ public final class GatewayServer {
                     if (n < 0) break;
                     read += n;
                 }
-                body = new String(buf, 0, read, StandardCharsets.UTF_8);
+                body = new String(buf, 0, read);
             }
 
             int pathEnd = target.indexOf('?');
