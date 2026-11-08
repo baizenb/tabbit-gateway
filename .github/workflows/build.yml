@@ -18,9 +18,10 @@ jobs:
 
       - name: Install Gradle 8.9
         run: |
-          curl -sL -o /tmp/g.zip https://services.gradle.org/distributions/gradle-8.9-bin.zip
-          unzip -q /tmp/g.zip -d /opt
-          echo "/opt/gradle-8.9/bin" >> $GITHUB_PATH
+          curl -fL --retry 3 -o /tmp/g.zip https://services.gradle.org/distributions/gradle-8.9-bin.zip || { echo "::error::download failed rc=$?"; exit 1; }
+          ls -la /tmp/g.zip
+          unzip -q /tmp/g.zip -d /opt || { echo "::error::unzip failed"; exit 1; }
+          /opt/gradle-8.9/bin/gradle --version | head -5 || { echo "::error::gradle not runnable"; exit 1; }
 
       - name: SDK check
         run: |
@@ -30,11 +31,12 @@ jobs:
 
       - name: Build debug APK
         run: |
+          echo "PATH=$PATH"
           /opt/gradle-8.9/bin/gradle assembleDebug --no-daemon > /tmp/build.log 2>&1
           st=$?
           if [ "$st" -ne 0 ]; then
             echo "::error::gradle exit $st"
-            grep -aE "FAILURE|What went wrong|Caused by|error:|Exception|FAILED" /tmp/build.log | head -20 | while IFS= read -r l; do echo "::error::$l"; done
+            echo "::error::$(tail -35 /tmp/build.log | sed ':a;N;$!ba;s/\n/%0A/g' | head -c 3500)"
             exit $st
           fi
           grep -aE "^> Task|BUILD" /tmp/build.log | tail -6
